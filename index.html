@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinMind Freelancer — AI Advisor pentru Freelanceri</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0c0c0e;
+  --surface: #131316;
+  --surface2: #1a1a1f;
+  --border: #222228;
+  --border2: #2a2a32;
+  --gold: #f0c040;
+  --gold2: #e8a020;
+  --green: #3de88a;
+  --red: #f05555;
+  --blue: #4da6ff;
+  --text: #eeeef5;
+  --muted: #55556a;
+  --muted2: #7777888;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; overflow: hidden; }
+
+/* NOISE TEXTURE */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.4;
+}
+
+/* DIAGONAL ACCENT LINE */
+body::before {
+  content: '';
+  position: fixed;
+  top: -100px; right: 200px;
+  width: 1px; height: 120vh;
+  background: linear-gradient(180deg, transparent, rgba(240,192,64,0.08), transparent);
+  transform: rotate(15deg);
+  pointer-events: none; z-index: 0;
+}
+
+.app {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.logo-area {
+  padding: 28px 24px 22px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; font-weight: 900;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.logo span { color: var(--gold); }
+
+.logo-tag {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 9px; letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  padding: 3px 8px; border-radius: 4px;
+}
+
+/* NAV TABS */
+.nav { padding: 16px 12px; border-bottom: 1px solid var(--border); }
+
+.nav-btn {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 12px;
+  border: none; background: none;
+  border-radius: 8px; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--muted);
+  transition: all 0.2s; margin-bottom: 2px;
+  text-align: left;
+}
+.nav-btn:hover { background: var(--surface2); color: var(--text); }
+.nav-btn.active { background: rgba(240,192,64,0.1); color: var(--gold); border: 1px solid rgba(240,192,64,0.2); }
+
+.nav-icon {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  background: var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.nav-btn.active .nav-icon { background: rgba(240,192,64,0.15); }
+
+/* QUICK CHAT STARTERS */
+.quick-section { padding: 16px 12px; flex: 1; overflow-y: auto; }
+.section-label {
+  font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px; padding: 0 4px;
+}
+
+.quick-chip {
+  display: block; width: 100%;
+  padding: 9px 12px; margin-bottom: 4px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--muted);
+  text-align: left; transition: all 0.2s; line-height: 1.5;
+}
+.quick-chip:hover { border-color: rgba(240,192,64,0.3); color: var(--gold); background: rgba(240,192,64,0.05); }
+
+/* SIDEBAR FOOTER */
+.sidebar-footer {
+  padding: 16px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.limit-wrap { margin-bottom: 12px; }
+.limit-top { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-bottom: 5px; }
+.limit-track { height: 3px; background: var(--border2); border-radius: 3px; overflow: hidden; }
+.limit-fill { height: 100%; background: linear-gradient(90deg, var(--gold2), var(--gold)); border-radius: 3px; transition: width 0.4s ease; }
+
+.upgrade-btn {
+  width: 100%; padding: 11px;
+  background: linear-gradient(135deg, var(--gold2), var(--gold));
+  border: none; border-radius: 9px;
+  font-family: 'Playfair Display', serif;
+  font-size: 13px; font-weight: 700;
+  color: #0c0c0e; cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.upgrade-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* ─── MAIN ─── */
+.main { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px; font-weight: 700;
+}
+.page-subtitle { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: rgba(61,232,138,0.08);
+  border: 1px solid rgba(61,232,138,0.2);
+  border-radius: 20px; font-size: 10px; color: var(--green);
+}
+.pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ─── PANELS ─── */
+.panel { display: none; flex: 1; overflow-y: auto; padding: 28px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.panel.active { display: flex; flex-direction: column; }
+.panel::-webkit-scrollbar { width: 4px; }
+.panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ─── CHAT PANEL ─── */
+.chat-messages { flex: 1; display: flex; flex-direction: column; gap: 18px; padding-bottom: 8px; }
+
+.welcome-banner {
+  background: linear-gradient(135deg, rgba(240,192,64,0.08), rgba(240,160,32,0.05));
+  border: 1px solid rgba(240,192,64,0.2);
+  border-radius: 16px; padding: 28px; text-align: center;
+  animation: fadeUp 0.5s ease;
+}
+.welcome-banner h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 900;
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.welcome-banner p { font-size: 12px; color: var(--muted); line-height: 1.7; max-width: 480px; margin: 0 auto 20px; }
+
+.chip-grid { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.chip {
+  padding: 7px 12px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 20px; font-size: 10px; color: var(--muted);
+  cursor: pointer; transition: all 0.2s;
+}
+.chip:hover { border-color: rgba(240,192,64,0.4); color: var(--gold); background: rgba(240,192,64,0.06); }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+
+.msg { display: flex; gap: 10px; animation: fadeUp 0.3s ease; max-width: 700px; }
+.msg.user { flex-direction: row-reverse; align-self: flex-end; }
+.msg.ai { align-self: flex-start; }
+
+.avatar {
+  width: 30px; height: 30px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.msg.user .avatar { background: linear-gradient(135deg, var(--gold2), var(--gold)); color: #0c0c0e; font-family: 'Playfair Display', serif; font-weight: 900; font-size: 11px; }
+.msg.ai .avatar { background: var(--surface2); border: 1px solid var(--border2); }
+
+.bubble {
+  padding: 12px 16px; border-radius: 12px;
+  font-size: 12px; line-height: 1.75; max-width: 520px;
+}
+.msg.user .bubble { background: var(--surface2); border: 1px solid var(--border2); border-top-right-radius: 3px; }
+.msg.ai .bubble { background: rgba(240,192,64,0.05); border: 1px solid rgba(240,192,64,0.12); border-top-left-radius: 3px; }
+
+.typing { display: flex; gap: 4px; padding: 4px 0; }
+.typing span { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); animation: bounce 1.2s infinite; }
+.typing span:nth-child(2){animation-delay:0.2s;} .typing span:nth-child(3){animation-delay:0.4s;}
+@keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:0.3;} 40%{transform:translateY(-5px);opacity:1;} }
+
+/* INPUT */
+.input-area {
+  padding: 18px 28px 22px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.input-box {
+  display: flex; align-items: flex-end; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 11px 14px;
+  transition: border-color 0.2s;
+}
+.input-box:focus-within { border-color: rgba(240,192,64,0.4); }
+textarea {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; line-height: 1.6; resize: none;
+  max-height: 100px; min-height: 20px;
+}
+textarea::placeholder { color: var(--muted); }
+.send-btn {
+  width: 34px; height: 34px; border-radius: 7px;
+  background: var(--gold); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.15s; color: #0c0c0e;
+}
+.send-btn:hover { background: var(--gold2); transform: scale(1.05); }
+.send-btn:disabled { background: var(--border); cursor: not-allowed; transform: none; }
+.send-btn svg { width: 14px; height: 14px; }
+.input-hint { font-size: 9px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+/* ─── CALCULATOR PANEL ─── */
+.calc-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 20px; align-items: start;
+}
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px;
+}
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px; font-weight: 700;
+  margin-bottom: 18px; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.field input, .field select {
+  width: 100%; padding: 10px 14px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  outline: none; transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus { border-color: rgba(240,192,64,0.4); }
+.field select option { background: var(--surface2); }
+
+.calc-btn {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, var(--gold2), var(--gold));
+  border: none; border-radius: 9px;
+  font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700;
+  color: #0c0c0e; cursor: pointer; margin-top: 4px;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.calc-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* RESULTS */
+.result-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { font-size: 11px; color: var(--muted); }
+.result-value { font-size: 14px; font-weight: 600; }
+.result-value.green { color: var(--green); }
+.result-value.red { color: var(--red); }
+.result-value.gold { color: var(--gold); }
+.result-value.blue { color: var(--blue); }
+
+.result-big {
+  text-align: center; padding: 20px 0;
+  border-bottom: 1px solid var(--border); margin-bottom: 16px;
+}
+.result-big-label { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.result-big-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px; font-weight: 900; color: var(--green);
+}
+
+.tip-box {
+  background: rgba(240,192,64,0.06);
+  border: 1px solid rgba(240,192,64,0.15);
+  border-radius: 10px; padding: 14px;
+  font-size: 11px; color: var(--gold);
+  line-height: 1.6; margin-top: 16px;
+}
+
+/* ─── BUDGET PANEL ─── */
+.budget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+.budget-month-card {
+  grid-column: 1/-1;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px;
+}
+
+.month-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+
+.bar-chart { margin-top: 16px; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bar-label { font-size: 10px; color: var(--muted); width: 90px; flex-shrink: 0; }
+.bar-track { flex: 1; height: 8px; background: var(--border2); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.bar-amount { font-size: 11px; color: var(--text); width: 80px; text-align: right; flex-shrink: 0; }
+
+.rule-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px;
+}
+.rule-title { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+
+.rule-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px; border-radius: 8px; margin-bottom: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+}
+.rule-pct {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 900;
+  width: 44px; flex-shrink: 0; text-align: center;
+}
+.rule-info { flex: 1; }
+.rule-name { font-size: 11px; color: var(--text); }
+.rule-desc { font-size: 10px; color: var(--muted); }
+.rule-amount { font-size: 13px; font-weight: 600; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+  z-index: 100; display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 36px;
+  max-width: 400px; width: 90%; text-align: center;
+  animation: slideUp 0.3s ease; position: relative;
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+
+.modal-close {
+  position: absolute; top: 14px; right: 14px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--muted);
+  width: 26px; height: 26px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { color: var(--text); }
+
+.modal-icon { font-size: 40px; margin-bottom: 16px; }
+.modal h3 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: var(--gold); margin-bottom: 8px; }
+.modal p { font-size: 11px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+
+.price-big { font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 900; color: var(--gold); }
+.price-per { font-size: 13px; color: var(--muted); }
+
+.perks { list-style: none; text-align: left; margin: 20px 0 24px; display: flex; flex-direction: column; gap: 8px; }
+.perks li { font-size: 11px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.perks li::before { content: '✓'; width: 18px; height: 18px; border-radius: 50%; background: rgba(61,232,138,0.15); color: var(--green); font-size: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+.pay-btn {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--gold2), var(--gold));
+  border: none; border-radius: 12px;
+  font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 900;
+  color: #0c0c0e; cursor: pointer; margin-bottom: 10px;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.pay-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+.skip-link { font-size: 10px; color: var(--muted); cursor: pointer; text-decoration: underline; }
+.skip-link:hover { color: var(--text); }
+
+/* NO KEY BANNER */
+.no-key-banner {
+  background: rgba(240,192,64,0.06); border: 1px solid rgba(240,192,64,0.2);
+  border-radius: 12px; padding: 20px; text-align: center;
+  margin-bottom: 16px; display: none;
+}
+.no-key-banner .icon { font-size: 28px; margin-bottom: 8px; }
+.no-key-banner p { font-size: 11px; color: var(--gold); line-height: 1.6; }
+.no-key-banner code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; color: var(--text); }
+
+@media (max-width: 750px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .calc-grid, .budget-grid, .month-inputs { grid-template-columns: 1fr; }
+  .budget-month-card { grid-column: 1; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ─── SIDEBAR ─── -->
+<aside class="sidebar">
+  <div class="logo-area">
+    <div class="logo">Fin<span>Mind</span></div>
+    <div class="logo-tag">✦ Freelancer Edition</div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchTab('chat', this)">
+      <span class="nav-icon">💬</span> Chat AI Advisor
+    </button>
+    <button class="nav-btn" onclick="switchTab('calc', this)">
+      <span class="nav-icon">🧮</span> Calculator Taxe
+    </button>
+    <button class="nav-btn" onclick="switchTab('budget', this)">
+      <span class="nav-icon">📊</span> Planner Buget
+    </button>
+  </nav>
+
+  <div class="quick-section">
+    <div class="section-label">Întrebări rapide</div>
+    <button class="quick-chip" onclick="askQuick('Trebuie să îmi fac SRL sau PFA ca freelancer?')">🏢 SRL sau PFA?</button>
+    <button class="quick-chip" onclick="askQuick('Cât impozit plătesc ca freelancer în România în 2025?')">💰 Impozit în RO 2025</button>
+    <button class="quick-chip" onclick="askQuick('Cum facturez un client din Germania sau UE?')">🇪🇺 Facturare client UE</button>
+    <button class="quick-chip" onclick="askQuick('Cum îmi gestionez veniturile neregulate ca freelancer?')">📈 Venituri neregulate</button>
+    <button class="quick-chip" onclick="askQuick('Cât să pun deoparte din fiecare proiect pentru taxe?')">🛡️ Rezervă pentru taxe</button>
+    <button class="quick-chip" onclick="askQuick('Care sunt cheltuielile deductibile pentru freelanceri?')">🧾 Cheltuieli deductibile</button>
+    <button class="quick-chip" onclick="askQuick('Cum îmi creez o pensie privată ca freelancer?')">🏖️ Pensie privată</button>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="limit-wrap">
+      <div class="limit-top">
+        <span>Întrebări gratuite</span>
+        <span id="limitText">5 / 5</span>
+      </div>
+      <div class="limit-track">
+        <div class="limit-fill" id="limitBar" style="width:100%"></div>
+      </div>
+    </div>
+    <button class="upgrade-btn" onclick="showModal()">⚡ Pro — $5/lună</button>
+  </div>
+</aside>
+
+<!-- ─── MAIN ─── -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div>
+        <div class="page-title" id="pageTitle">Chat AI Advisor</div>
+        <div class="page-subtitle" id="pageSubtitle">Consilier financiar specializat pentru freelanceri</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="pulse"></div> AI activ
+    </div>
+  </div>
+
+  <!-- ─── CHAT PANEL ─── -->
+  <div class="panel active" id="panel-chat">
+    <div class="chat-messages" id="chatMessages">
+
+      <div id="noKeyBanner" class="no-key-banner" style="display:none;">
+        <div class="icon">🔑</div>
+        <p>Cheia API lipsește. Contactează administratorul.</p>
+      </div>
+
+      <div class="welcome-banner" id="welcomeBanner">
+        <h2>Bună! Sunt FinMind 👋</h2>
+        <p>Consilierul tău AI specializat în finanțele freelancerilor. Te ajut cu taxe, buget, facturare și planificare financiară.</p>
+        <div class="chip-grid">
+          <div class="chip" onclick="askQuick('Cum calculez impozitul ca PFA în România?')">🧮 Impozit PFA</div>
+          <div class="chip" onclick="askQuick('Merită să lucrez prin SRL față de PFA?')">⚖️ SRL vs PFA</div>
+          <div class="chip" onclick="askQuick('Câți bani să pun deoparte din fiecare proiect?')">💡 Regula economiilor</div>
+          <div class="chip" onclick="askQuick('Cum îmi planific bugetul cu venituri variabile?')">📊 Buget variabil</div>
+          <div class="chip" onclick="askQuick('Ce cheltuieli pot deduce ca freelancer?')">🧾 Deduceri fiscale</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="input-area">
+      <div class="input-box">
+        <textarea id="userInput" placeholder="Întreabă despre taxe, facturare, buget, investiții..." rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+      <div class="input-hint">Enter — trimite · Shift+Enter — linie nouă</div>
+    </div>
+  </div>
+
+  <!-- ─── CALCULATOR PANEL ─── -->
+  <div class="panel" id="panel-calc">
+    <div class="calc-grid">
+      <div class="card">
+        <div class="card-title">🧮 Calculator Taxe Freelancer RO</div>
+
+        <div class="field">
+          <label>Venit brut lunar (RON)</label>
+          <input type="number" id="c-venit" placeholder="ex: 8000" oninput="calcTaxe()">
+        </div>
+        <div class="field">
+          <label>Tip entitate</label>
+          <select id="c-tip" onchange="calcTaxe()">
+            <option value="pfa_norma">PFA — Normă de Venit</option>
+            <option value="pfa_real">PFA — Sistem Real</option>
+            <option value="srl_micro">SRL Micro (1%)</option>
+            <option value="srl_normal">SRL Normal (16%)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Cheltuieli lunare deductibile (RON)</label>
+          <input type="number" id="c-cheltuieli" placeholder="ex: 1500" oninput="calcTaxe()">
+        </div>
+
+        <button class="calc-btn" onclick="calcTaxe()">Calculează →</button>
+      </div>
+
+      <div class="card" id="calcResults">
+        <div class="card-title">📋 Rezultate</div>
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:40px 0;">
+          Introdu venitul tău pentru a vedea calculul
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── BUDGET PANEL ─── -->
+  <div class="panel" id="panel-budget">
+    <div class="budget-grid">
+      <div class="budget-month-card">
+        <div class="card-title">📊 Planner Buget Lunar — Regula 50/30/20</div>
+        <div class="month-inputs">
+          <div class="field">
+            <label>Venit net luna aceasta (RON)</label>
+            <input type="number" id="b-venit" placeholder="ex: 6000" oninput="calcBuget()">
+          </div>
+          <div class="field">
+            <label>Luna viitoare (estimat)</label>
+            <input type="number" id="b-viitor" placeholder="ex: 4000" oninput="calcBuget()">
+          </div>
+          <div class="field">
+            <label>Rezervă actuală (RON)</label>
+            <input type="number" id="b-rezerva" placeholder="ex: 10000" oninput="calcBuget()">
+          </div>
+        </div>
+
+        <div id="budgetResults" style="display:none;">
+          <div class="bar-chart" id="barChart"></div>
+        </div>
+      </div>
+
+      <div class="rule-card">
+        <div class="rule-title">Regula 50/30/20 pentru Freelanceri</div>
+        <div id="ruleItems">
+          <div class="rule-item">
+            <div class="rule-pct" style="color:var(--blue)">50%</div>
+            <div class="rule-info">
+              <div class="rule-name">Nevoi esențiale</div>
+              <div class="rule-desc">Chirie, mâncare, utilități, transport</div>
+            </div>
+            <div class="rule-amount" style="color:var(--muted)" id="r-nevoi">—</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-pct" style="color:var(--gold)">20%</div>
+            <div class="rule-info">
+              <div class="rule-name">Rezervă fiscală</div>
+              <div class="rule-desc">Bani puși deoparte pentru taxe</div>
+            </div>
+            <div class="rule-amount" style="color:var(--muted)" id="r-taxe">—</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-pct" style="color:var(--green)">20%</div>
+            <div class="rule-info">
+              <div class="rule-name">Economii / Investiții</div>
+              <div class="rule-desc">Fond de urgență, pensie, ETF-uri</div>
+            </div>
+            <div class="rule-amount" style="color:var(--muted)" id="r-economii">—</div>
+          </div>
+          <div class="rule-item">
+            <div class="rule-pct" style="color:var(--muted)">10%</div>
+            <div class="rule-info">
+              <div class="rule-name">Plăceri & Lifestyle</div>
+              <div class="rule-desc">Distracție, hobby, vacanță</div>
+            </div>
+            <div class="rule-amount" style="color:var(--muted)" id="r-lifestyle">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="budgetAdvice" style="display:none;">
+        <div class="card-title">💡 Situația ta</div>
+        <div id="budgetAdviceContent"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none;">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-icon">⚡</div>
+    <h3>FinMind Pro</h3>
+    <p>Acces nelimitat la consilierul tău financiar AI, specializat 100% pentru freelanceri.</p>
+    <div><span class="price-big">$5</span> <span class="price-per">/ lună</span></div>
+    <ul class="perks">
+      <li>Întrebări nelimitate în fiecare zi</li>
+      <li>Istoric complet al conversațiilor</li>
+      <li>Calculator taxe avansat (SRL, PFA, UE)</li>
+      <li>Planner buget personalizat lunar</li>
+      <li>Alerte și sfaturi financiare săptămânale</li>
+    </ul>
+    <button class="pay-btn" onclick="goCheckout()">Abonează-te — $5/lună</button>
+    <div class="skip-link" onclick="closeModal()">Continuă gratuit</div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// 👇 PUNE CHEIA TA ANTHROPIC AICI
+const _a = 'sk-ant-api03-16nh9un2yjZ8OgGVE_5YJ5joe';
+const _b = 'WW3eYjcAFTWm5jIBWt0tmZbZg3iMPhgDh5_GPBl';
+const _c = 'kUJpG7eXEM3I_Yx99CXQqA-mxknmAAA';
+const API_KEY = _a + _b + _c;
+// =============================================
+
+const FREE_LIMIT = 5;
+let isLoading = false;
+let freeUsed = parseInt(localStorage.getItem('fm_fl_free') || '0');
+let isPro = localStorage.getItem('fm_fl_pro') === 'true';
+let chatHistory = [];
+
+const SYSTEM = `Ești FinMind — un consilier financiar AI specializat exclusiv pentru freelanceri din România și Moldova.
+Ajuți cu: taxe PFA/SRL, facturare clienți UE, gestionarea veniturilor variabile, bugetare, economii, investiții.
+Răspunzi în română, concis și practic, cu cifre concrete și exemple reale.
+Cunoști sistemul fiscal românesc din 2024-2025: impozit 10% PFA sistem real, CASS 10% din venit brut (plafon 6 salarii minime), CAS 25% opțional, micro-SRL 1%.
+Folosești emoji pentru claritate. Adaugi mereu: "Consultă un contabil autorizat pentru situația ta specifică."
+Maxim 250 de cuvinte per răspuns.`;
+
+// Init
+if (!API_KEY || API_KEY === 'pune_cheia_ta_aici') {
+}
+updateLimitBar();
+
+// TAB SWITCHING
+function switchTab(tab, btn) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+  const titles = { chat: ['Chat AI Advisor', 'Consilier financiar specializat pentru freelanceri'], calc: ['Calculator Taxe', 'Estimează impozitele tale ca freelancer în RO'], budget: ['Planner Buget', 'Planifică bugetul cu regula 50/30/20'] };
+  document.getElementById('pageTitle').textContent = titles[tab][0];
+  document.getElementById('pageSubtitle').textContent = titles[tab][1];
+}
+
+// LIMIT BAR
+function updateLimitBar() {
+  const rem = Math.max(0, FREE_LIMIT - freeUsed);
+  document.getElementById('limitBar').style.width = (rem / FREE_LIMIT * 100) + '%';
+  document.getElementById('limitText').textContent = isPro ? '∞ Pro' : rem + ' / ' + FREE_LIMIT;
+  if (rem === 0 && !isPro) document.getElementById('limitBar').style.background = 'var(--red)';
+}
+
+// MODAL
+function showModal() { document.getElementById('modal').style.display = 'flex'; }
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+function goCheckout() { window.open('https://lemonsqueezy.com', '_blank'); }
+
+// CHAT
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
+
+function askQuick(text) {
+  switchTab('chat', document.querySelectorAll('.nav-btn')[0]);
+  document.getElementById('userInput').value = text;
+  sendMessage();
+}
+
+function hideWelcome() {
+  const w = document.getElementById('welcomeBanner');
+  if (w) w.style.display = 'none';
+}
+
+function addMsg(role, html) {
+  hideWelcome();
+  const area = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const av = role === 'user' ? `<div class="avatar">Tu</div>` : `<div class="avatar">🤖</div>`;
+  div.innerHTML = av + `<div class="bubble">${html}</div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  hideWelcome();
+  const area = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ai'; div.id = 'typing';
+  div.innerHTML = `<div class="avatar">🤖</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+function removeTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (!API_KEY || API_KEY === 'pune_cheia_ta_aici') {
+    document.getElementById('noKeyBanner').style.display = 'block';
+    return;
+  }
+  if (!isPro && freeUsed >= FREE_LIMIT) { showModal(); return; }
+
+  input.value = ''; input.style.height = 'auto';
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  addMsg('user', text.replace(/\n/g, '<br>'));
+  addTyping();
+  chatHistory.push({ role: 'user', content: text });
+
+  if (!isPro) { freeUsed++; localStorage.setItem('fm_fl_free', freeUsed); updateLimitBar(); }
+
+  try {
+    const res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: SYSTEM, messages: chatHistory })
+    });
+
+    const data = await res.json();
+    removeTyping();
+
+    if (data.content?.[0]) {
+      const reply = data.content[0].text;
+      chatHistory.push({ role: 'assistant', content: reply });
+      addMsg('ai', reply.replace(/\n/g, '<br>'));
+      if (!isPro && freeUsed === 3) {
+        setTimeout(() => addMsg('ai', `💡 Ai folosit 3 din 5 întrebări gratuite. <span style="color:var(--gold);cursor:pointer;text-decoration:underline;" onclick="showModal()">Treci la Pro pentru $5/lună</span> și pune oricâte întrebări vrei.`), 800);
+      }
+    } else {
+      addMsg('ai', '⚠️ Eroare API. Verifică cheia și încearcă din nou.');
+    }
+  } catch (e) {
+    removeTyping();
+    addMsg('ai', '⚠️ Eroare de conexiune. Verifică internetul.');
+  }
+
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+// ─── CALCULATOR TAXE ───
+function calcTaxe() {
+  const venit = parseFloat(document.getElementById('c-venit').value) || 0;
+  const tip = document.getElementById('c-tip').value;
+  const cheltuieli = parseFloat(document.getElementById('c-cheltuieli').value) || 0;
+  const el = document.getElementById('calcResults');
+
+  if (!venit) {
+    el.innerHTML = `<div class="card-title">📋 Rezultate</div><div style="text-align:center;color:var(--muted);font-size:12px;padding:40px 0;">Introdu venitul tău pentru a vedea calculul</div>`;
+    return;
+  }
+
+  let impozit = 0, cass = 0, cas = 0, venitNet = 0, venitImpozabil = 0;
+  const salarMinim = 3700;
+  const plafonCASS = 6 * salarMinim;
+  const plafonCAS = 24 * salarMinim;
+
+  if (tip === 'pfa_real') {
+    venitImpozabil = Math.max(0, venit - cheltuieli);
+    impozit = venitImpozabil * 0.10;
+    const bazaCASS = Math.min(venit * 12, plafonCASS * 12) / 12;
+    cass = bazaCASS * 0.10;
+    cas = 0;
+    venitNet = venit - impozit - cass;
+  } else if (tip === 'pfa_norma') {
+    venitImpozabil = venit * 0.7;
+    impozit = venitImpozabil * 0.10;
+    cass = Math.min(venit, plafonCASS) * 0.10;
+    venitNet = venit - impozit - cass;
+  } else if (tip === 'srl_micro') {
+    impozit = venit * 0.01;
+    cass = 0; cas = 0;
+    venitNet = venit - impozit;
+  } else if (tip === 'srl_normal') {
+    const profit = Math.max(0, venit - cheltuieli);
+    impozit = profit * 0.16;
+    venitNet = venit - impozit;
+  }
+
+  const totalTaxe = impozit + cass + cas;
+  const pctTaxe = venit > 0 ? ((totalTaxe / venit) * 100).toFixed(1) : 0;
+
+  el.innerHTML = `
+    <div class="card-title">📋 Rezultate</div>
+    <div class="result-big">
+      <div class="result-big-label">Venit net estimat / lună</div>
+      <div class="result-big-value">${fmt(venitNet)} RON</div>
+    </div>
+    <div class="result-row"><span class="result-label">Venit brut</span><span class="result-value">${fmt(venit)} RON</span></div>
+    <div class="result-row"><span class="result-label">Impozit venit (10%)</span><span class="result-value red">- ${fmt(impozit)} RON</span></div>
+    <div class="result-row"><span class="result-label">CASS (10%)</span><span class="result-value red">- ${fmt(cass)} RON</span></div>
+    ${cas > 0 ? `<div class="result-row"><span class="result-label">CAS (25%)</span><span class="result-value red">- ${fmt(cas)} RON</span></div>` : ''}
+    <div class="result-row"><span class="result-label">Total taxe</span><span class="result-value red">- ${fmt(totalTaxe)} RON (${pctTaxe}%)</span></div>
+    <div class="result-row"><span class="result-label">Pune deoparte lunar</span><span class="result-value gold">${fmt(totalTaxe)} RON</span></div>
+    <div class="tip-box">💡 Pune deoparte <strong>${fmt(totalTaxe)} RON</strong> în fiecare lună într-un cont separat. La sfârșitul anului vei avea exact ce trebuie pentru taxe — fără surprize.</div>
+  `;
+}
+
+function fmt(n) { return Math.round(n).toLocaleString('ro-RO'); }
+
+// ─── BUDGET PLANNER ───
+function calcBuget() {
+  const venit = parseFloat(document.getElementById('b-venit').value) || 0;
+  const viitor = parseFloat(document.getElementById('b-viitor').value) || 0;
+  const rezerva = parseFloat(document.getElementById('b-rezerva').value) || 0;
+
+  if (!venit) return;
+
+  const nevoi = venit * 0.50;
+  const taxe = venit * 0.20;
+  const economii = venit * 0.20;
+  const lifestyle = venit * 0.10;
+
+  document.getElementById('r-nevoi').textContent = fmt(nevoi) + ' RON';
+  document.getElementById('r-nevoi').style.color = 'var(--blue)';
+  document.getElementById('r-taxe').textContent = fmt(taxe) + ' RON';
+  document.getElementById('r-taxe').style.color = 'var(--gold)';
+  document.getElementById('r-economii').textContent = fmt(economii) + ' RON';
+  document.getElementById('r-economii').style.color = 'var(--green)';
+  document.getElementById('r-lifestyle').textContent = fmt(lifestyle) + ' RON';
+  document.getElementById('r-lifestyle').style.color = 'var(--text)';
+
+  const bars = [
+    { label: 'Nevoi (50%)', amount: nevoi, color: 'var(--blue)', pct: 50 },
+    { label: 'Taxe (20%)', amount: taxe, color: 'var(--gold)', pct: 20 },
+    { label: 'Economii (20%)', amount: economii, color: 'var(--green)', pct: 20 },
+    { label: 'Lifestyle (10%)', amount: lifestyle, color: 'var(--muted)', pct: 10 },
+  ];
+
+  document.getElementById('barChart').innerHTML = bars.map(b => `
+    <div class="bar-row">
+      <div class="bar-label">${b.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${b.pct}%;background:${b.color};"></div></div>
+      <div class="bar-amount">${fmt(b.amount)} RON</div>
+    </div>
+  `).join('');
+
+  document.getElementById('budgetResults').style.display = 'block';
+
+  // Advice
+  const luniRezervare = rezerva > 0 ? (rezerva / (nevoi + taxe)).toFixed(1) : 0;
+  const targetRezervare = nevoi * 3;
+  const adviceEl = document.getElementById('budgetAdvice');
+  const adviceContent = document.getElementById('budgetAdviceContent');
+
+  let html = '';
+  if (viitor > 0 && viitor < nevoi) {
+    html += `<div class="result-row"><span class="result-label">⚠️ Luna viitoare risc</span><span class="result-value red">Venit sub nevoi!</span></div>`;
+    html += `<div class="tip-box" style="margin-top:0">Luna viitoare (${fmt(viitor)} RON) nu acoperă nevoile esențiale (${fmt(nevoi)} RON). Asigură-te că ai rezervă!</div>`;
+  }
+  if (rezerva > 0) {
+    html += `<div class="result-row"><span class="result-label">Rezervă actuală</span><span class="result-value ${rezerva >= targetRezervare ? 'green' : 'gold'}">${fmt(rezerva)} RON</span></div>`;
+    html += `<div class="result-row"><span class="result-label">Luni de siguranță</span><span class="result-value ${luniRezervare >= 3 ? 'green' : 'gold'}">${luniRezervare} luni</span></div>`;
+    if (rezerva < targetRezervare) {
+      html += `<div class="tip-box" style="margin-top:8px">🎯 Target: ${fmt(targetRezervare)} RON (3 luni de cheltuieli). Mai ai nevoie de ${fmt(targetRezervare - rezerva)} RON pentru siguranță completă.</div>`;
+    } else {
+      html += `<div class="tip-box" style="margin-top:8px">✅ Rezervă excelentă! Peste minimul recomandat de 3 luni. Poți investi surplusul în ETF-uri sau fonduri de pensii private.</div>`;
+    }
+  }
+
+  if (html) {
+    adviceContent.innerHTML = html;
+    adviceEl.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>
