@@ -1,6 +1,6 @@
 export async function handler(event) {
   try {
-    const { message } = JSON.parse(event.body);
+    const { message } = JSON.parse(event.body || "{}");
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -10,7 +10,7 @@ export async function handler(event) {
         "content-type": "application/json"
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-latest",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1000,
         messages: [
           { role: "user", content: message }
@@ -20,10 +20,17 @@ export async function handler(event) {
 
     const data = await response.json();
 
+    if (!response.ok) {
+      return {
+        statusCode: response.status,
+        body: JSON.stringify(data)
+      };
+    }
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        reply: data.content?.[0]?.text || "No response"
+        reply: data.content?.[0]?.text || "Claude nu a trimis text."
       })
     };
   } catch (error) {
