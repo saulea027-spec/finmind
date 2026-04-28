@@ -1,6 +1,24 @@
 export async function handler(event) {
   try {
-    const { message } = JSON.parse(event.body || "{}");
+    const body = JSON.parse(event.body || "{}");
+
+    const message =
+      body.message ||
+      body.prompt ||
+      body.question ||
+      body.input ||
+      body.text ||
+      body.messages?.[body.messages.length - 1]?.content;
+
+    if (!message) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "No message received",
+          received: body
+        })
+      };
+    }
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -13,7 +31,10 @@ export async function handler(event) {
         model: "claude-3-5-sonnet-20241022",
         max_tokens: 1000,
         messages: [
-          { role: "user", content: message }
+          {
+            role: "user",
+            content: message
+          }
         ]
       })
     });
@@ -36,7 +57,9 @@ export async function handler(event) {
   } catch (error) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({
+        error: error.message
+      })
     };
   }
 }
